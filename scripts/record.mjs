@@ -77,9 +77,33 @@ const hit = await idAt(x, y);
 await page.mouse.down();
 await page.mouse.up();
 mark('ack-incident: click, right after a new incident arrived', { arrived, picked: targetId, underPointer: hit });
+const confirm = page.getByTestId('confirm');
+await confirm.waitFor();
+mark('ack-incident: confirm names the incident the click picked', { confirmText: (await confirm.innerText()).split('\n')[0], picked: targetId, ackRequests: receipts.length });
+await page.waitForTimeout(2500);
+// on-call reads it: not the one they picked, so Cancel
+const cancel = await page.getByTestId('confirm-cancel').boundingBox();
+await page.mouse.move(cancel.x + cancel.width / 2, cancel.y + cancel.height / 2, { steps: 25 });
+await page.mouse.down();
+await page.mouse.up();
+await confirm.waitFor({ state: 'detached' });
+mark('ack-incident: Cancel, nothing sent', { ackRequests: receipts.length, ackedMarks: await page.getByTestId('acked').count() });
+await page.waitForTimeout(1000);
+// pick the row again, where it is now
+const again = await page.locator(`[data-testid="incident-row"][data-id="${targetId}"] [data-testid="ack"]`).boundingBox();
+await page.mouse.move(again.x + again.width / 2, again.y + again.height / 2, { steps: 25 });
+await page.mouse.down();
+await page.mouse.up();
+await confirm.waitFor();
+mark('ack-incident: Ack on the picked row, confirm names it', { confirmText: (await confirm.innerText()).split('\n')[0], picked: targetId });
+await page.waitForTimeout(2500);
+const yes = await page.getByTestId('confirm-ack').boundingBox();
+await page.mouse.move(yes.x + yes.width / 2, yes.y + yes.height / 2, { steps: 25 });
+await page.mouse.down();
+await page.mouse.up();
 await page.getByTestId('acked').first().waitFor();
 const ackedId = await page.getByTestId('acked').first().evaluate((n) => n.closest('[data-testid="incident-row"]').dataset.id);
-mark('ack-incident: row marked acked', { ackedRow: ackedId, picked: targetId });
+mark('ack-incident: confirmed, row marked acked', { ackedRow: ackedId, picked: targetId, ackRequests: receipts.length });
 await page.waitForTimeout(5000);
 mark('end', { ackedMarks: await page.getByTestId('acked').count() });
 

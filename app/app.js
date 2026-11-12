@@ -27,6 +27,46 @@ function markAcked(row, reply) {
   row.querySelector('.act').append(mark);
 }
 
+/**
+ * R2: Ack asks first, and the question names the incident. The list is live, so the row under the
+ * pointer can change between aiming and clicking; the confirm says which incident the click picked.
+ * It sits in a fixed place, so a new incident cannot move it. One confirm at a time.
+ */
+function askToConfirm(id, button) {
+  document.querySelector('[data-testid="confirm"]')?.remove();
+  const backdrop = el('div', { 'data-testid': 'confirm', class: 'confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'confirm-title' });
+  const box = el('div', { class: 'confirm-box' });
+  const title = el('p', { id: 'confirm-title', class: 'confirm-title' });
+  title.append('Ack ', el('strong', { class: 'confirm-id' }, id), '?');
+  const what = el('p', { class: 'confirm-what' }, rows.get(id)?.querySelector('.what')?.textContent ?? '');
+  const yes = el('button', { 'data-testid': 'confirm-ack', type: 'button', class: 'ack primary' }, `Ack ${id}`);
+  const no = el('button', { 'data-testid': 'confirm-cancel', type: 'button', class: 'ack' }, 'Cancel');
+  const actions = el('div', { class: 'confirm-actions' });
+  actions.append(no, yes);
+  box.append(title, what, actions);
+  backdrop.append(box);
+  const close = () => {
+    backdrop.remove();
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (event) => {
+    if (event.key === 'Escape') close();
+  };
+  yes.addEventListener('click', () => {
+    close();
+    // the row may have been rebuilt or acked meanwhile; use the button that is in the row now
+    const current = rows.get(id)?.querySelector('[data-testid="ack"]') ?? button;
+    onAck(id, current);
+  });
+  no.addEventListener('click', close);
+  backdrop.addEventListener('click', (event) => {
+    if (event.target === backdrop) close();
+  });
+  document.addEventListener('keydown', onKey);
+  document.body.append(backdrop);
+  no.focus(); // Enter must not ack by reflex
+}
+
 async function onAck(id, button) {
   button.disabled = true;
   button.textContent = 'Acking…';
@@ -53,7 +93,7 @@ function buildRow(i) {
     el('span', { class: 'act' }),
   );
   const button = el('button', { 'data-testid': 'ack', type: 'button', class: 'ack' }, 'Ack');
-  button.addEventListener('click', () => onAck(i.id, button));
+  button.addEventListener('click', () => askToConfirm(i.id, button));
   row.querySelector('.act').append(button);
   return row;
 }

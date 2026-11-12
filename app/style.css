@@ -21,3 +21,10 @@ footer { color: #777; font-size: 13px; }
 .acked { color: #0a6b2d; font-weight: 600; }
 .row.is-acked { background: #f3f8f4; }
 footer [data-testid="build-sha"] { font-family: ui-monospace, monospace; }
+.confirm { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(0, 0, 0, 0.35); }
+.confirm-box { min-width: 320px; max-width: 480px; padding: 20px 24px; border-radius: 8px; background: #fff; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25); }
+.confirm-title { margin: 0; font-size: 20px; }
+.confirm-id { font-family: ui-monospace, monospace; }
+.confirm-what { margin: 6px 0 16px; color: #555; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.ack.primary { background: #1d1d1f; color: #fff; }

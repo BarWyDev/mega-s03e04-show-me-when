@@ -37,9 +37,25 @@ for (const [locale, timezoneId] of [['de-DE', 'Europe/Berlin'], ['en-NZ', 'Pacif
     // R2: ack the third row
     const row = page.getByTestId('incident-row').nth(2);
     const id = await row.getAttribute('data-id');
-    const [msg] = await Promise.all([page.waitForEvent('console', (m) => m.text().startsWith('ack ')), row.getByTestId('ack').click()]);
+    // cancel first: no ack goes out, no mark
+    let ackCalls = 0;
+    page.on('request', (r) => { if (new URL(r.url()).pathname.endsWith('/api/ack')) ackCalls++; });
+    await row.getByTestId('ack').click();
+    ok('confirm names the incident', (await page.getByTestId('confirm').innerText()).includes(id), id);
+    await page.getByTestId('confirm-cancel').click();
+    await page.waitForTimeout(500);
+    ok('cancel sends nothing', ackCalls === 0 && (await page.getByTestId('confirm').count()) === 0 && (await page.getByTestId('acked').count()) === 0);
+    await row.getByTestId('ack').click();
+    await page.keyboard.press('Escape');
+    ok('Escape closes the confirm', (await page.getByTestId('confirm').count()) === 0 && ackCalls === 0);
+    await row.getByTestId('ack').click();
+    // the confirm stays put and keeps its incident while the list moves
+    const topBefore = await page.getByTestId('incident-row').first().getAttribute('data-id');
+    await page.waitForFunction((t) => document.querySelector('[data-testid="incident-row"]').dataset.id !== t, topBefore, { timeout: 40000 });
+    ok('confirm keeps its incident while rows move', (await page.getByTestId('confirm').innerText()).includes(id));
+    const [msg] = await Promise.all([page.waitForEvent('console', (m) => m.text().startsWith('ack ')), page.getByTestId('confirm-ack').click()]);
     await page.locator(`[data-id="${id}"] [data-testid="acked"]`).waitFor();
-    ok('ack marks that row', msg.text().split(' ')[1] === id && (await page.getByTestId('acked').count()) === 1, id);
+    ok('ack marks that row', msg.text().split(' ')[1] === id && (await page.getByTestId('acked').count()) === 1 && ackCalls === 1, id);
     ok('ack button gone on acked row', (await page.locator(`[data-id="${id}"] [data-testid="ack"]`).count()) === 0);
     await page.waitForTimeout(5000);
     ok('acked mark survives refreshes', (await page.locator(`[data-id="${id}"] [data-testid="acked"]`).count()) === 1);
